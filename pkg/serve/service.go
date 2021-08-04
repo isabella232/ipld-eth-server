@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 	"github.com/vulcanize/ipld-eth-server/pkg/net"
 
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -34,7 +35,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	eth2 "github.com/vulcanize/ipld-eth-indexer/pkg/eth"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/postgres"
 
 	"github.com/vulcanize/ipld-eth-server/pkg/eth"
 )

@@ -24,14 +24,13 @@ import (
 	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 	"github.com/vulcanize/ipld-eth-indexer/pkg/shared"
 
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/spf13/viper"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/postgres"
-	"github.com/vulcanize/ipld-eth-indexer/utils"
 	"github.com/vulcanize/ipld-eth-server/pkg/prom"
 
 	"github.com/vulcanize/ipld-eth-server/pkg/eth"
@@ -53,10 +52,14 @@ const (
 	ETH_SUPPORTS_STATEDIFF  = "ETH_SUPPORTS_STATEDIFF"
 )
 
+type DBConfig struct {
+}
+
 // Config struct
 type Config struct {
 	DB       *postgres.DB
-	DBConfig postgres.Config
+	DBConfig postgres.ConnectionConfig
+	DBParams postgres.ConnectionParams
 
 	WSEnabled  bool
 	WSEndpoint string
@@ -95,11 +98,11 @@ func NewConfig() (*Config, error) {
 	viper.BindEnv("ethereum.chainConfig", ETH_CHAIN_CONFIG)
 	viper.BindEnv("ethereum.supportsStateDiff", ETH_SUPPORTS_STATEDIFF)
 
-	c.DBConfig.Init()
+	//c.DBConfig.Init()
 
 	ethHTTP := viper.GetString("ethereum.httpPath")
 	ethHTTPEndpoint := fmt.Sprintf("http://%s", ethHTTP)
-	nodeInfo, cli, err := shared.GetEthNodeAndClient(ethHTTPEndpoint)
+	nodeInfo, cli, err := getEthNodeAndClient(ethHTTPEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -184,9 +187,10 @@ func NewConfig() (*Config, error) {
 	c.IpldGraphqlEnabled = ipldGraphqlEnabled
 
 	overrideDBConnConfig(&c.DBConfig)
-	serveDB := utils.LoadPostgres(c.DBConfig, nodeInfo, false)
-	prom.RegisterDBCollector(c.DBConfig.Name, serveDB.DB)
-	c.DB = &serveDB
+	postgres.DbConnectionString(postgres.ConnectionParams{})
+	serveDB, err := postgres.NewDB(postgres.DbConnectionString(c.DBParams), c.DBConfig, nodeInfo)
+	prom.RegisterDBCollector(c.DBParams.Name, serveDB.DB)
+	c.DB = serveDB
 
 	defaultSenderStr := viper.GetString("ethereum.defaultSender")
 	if defaultSenderStr != "" {
@@ -208,7 +212,7 @@ func NewConfig() (*Config, error) {
 	return c, err
 }
 
-func overrideDBConnConfig(con *postgres.Config) {
+func overrideDBConnConfig(con *postgres.ConnectionConfig) {
 	viper.BindEnv("database.server.maxIdle", SERVER_MAX_IDLE_CONNECTIONS)
 	viper.BindEnv("database.server.maxOpen", SERVER_MAX_OPEN_CONNECTIONS)
 	viper.BindEnv("database.server.maxLifetime", SERVER_MAX_CONN_LIFETIME)

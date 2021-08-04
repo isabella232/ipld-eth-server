@@ -29,15 +29,14 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/statediff"
+	"github.com/ethereum/go-ethereum/statediff/indexer"
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
+	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	eth2 "github.com/vulcanize/ipld-eth-indexer/pkg/eth"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/postgres"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/shared"
 	"github.com/vulcanize/ipld-eth-server/pkg/eth"
 	"github.com/vulcanize/ipld-eth-server/pkg/eth/test_helpers"
 )
@@ -76,7 +75,8 @@ var _ = Describe("eth state reading tests", func() {
 		var err error
 		db, err = shared.SetupDB()
 		Expect(err).ToNot(HaveOccurred())
-		transformer := eth2.NewStateDiffTransformer(chainConfig, db)
+		transformer := indexer.NewStateDiffIndexer(chainConfig, db)
+		//transformer := eth2.NewStateDiffTransformer(chainConfig, db)
 		backend, err = eth.NewEthBackend(db, &eth.Config{
 			ChainConfig: chainConfig,
 			VmConfig:    vm.Config{},
@@ -135,29 +135,36 @@ var _ = Describe("eth state reading tests", func() {
 			}
 			diff, err := builder.BuildStateDiffObject(args, params)
 			Expect(err).ToNot(HaveOccurred())
-			diffRlp, err := rlp.EncodeToBytes(diff)
+			//diffRlp, err := rlp.EncodeToBytes(diff)
+			//Expect(err).ToNot(HaveOccurred())
+			//blockRlp, err := rlp.EncodeToBytes(block)
+			//Expect(err).ToNot(HaveOccurred())
+			//receiptsRlp, err := rlp.EncodeToBytes(rcts)
+			//Expect(err).ToNot(HaveOccurred())
+			//payload := statediff.Payload{
+			//	StateObjectRlp:  diffRlp,
+			//	BlockRlp:        blockRlp,
+			//	ReceiptsRlp:     receiptsRlp,
+			//	TotalDifficulty: mockTD,
+			//}
+			tx, err := transformer.PushBlock(block, rcts, block.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
-			blockRlp, err := rlp.EncodeToBytes(block)
-			Expect(err).ToNot(HaveOccurred())
-			receiptsRlp, err := rlp.EncodeToBytes(rcts)
-			Expect(err).ToNot(HaveOccurred())
-			payload := statediff.Payload{
-				StateObjectRlp:  diffRlp,
-				BlockRlp:        blockRlp,
-				ReceiptsRlp:     receiptsRlp,
-				TotalDifficulty: mockTD,
+
+			for _, node := range diff.Nodes {
+				err = transformer.PushStateNode(tx, node)
+				Expect(err).ToNot(HaveOccurred())
 			}
-			_, err = transformer.Transform(0, payload)
-			Expect(err).ToNot(HaveOccurred())
 		}
 
 		// Insert some non-canonical data into the database so that we test our ability to discern canonicity
-		indexAndPublisher := eth2.NewIPLDPublisher(db)
+		indexAndPublisher := indexer.NewStateDiffIndexer(chainConfig, db)
+
+		//indexAndPublisher := eth2.NewIPLDPublisher(db)
 		api = eth.NewPublicEthAPI(backend, nil, false)
-		err = indexAndPublisher.Publish(test_helpers.MockConvertedPayload)
+		_, err = indexAndPublisher.PushBlock(test_helpers.MockBlock, test_helpers.MockReceipts, test_helpers.MockBlock.Difficulty())
 		Expect(err).ToNot(HaveOccurred())
 		// The non-canonical header has a child
-		err = indexAndPublisher.Publish(test_helpers.MockConvertedPayloadForChild)
+		_, err = indexAndPublisher.PushBlock(test_helpers.MockChild, test_helpers.MockReceipts, test_helpers.MockChild.Difficulty())
 		Expect(err).ToNot(HaveOccurred())
 		err = publishCode(db, test_helpers.ContractCodeHash, test_helpers.ContractCode)
 		Expect(err).ToNot(HaveOccurred())

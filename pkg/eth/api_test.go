@@ -30,13 +30,12 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/statediff/indexer"
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
+	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	eth2 "github.com/vulcanize/ipld-eth-indexer/pkg/eth"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/postgres"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/shared"
-
+	shared1 "github.com/vulcanize/ipld-eth-indexer/pkg/shared"
 	"github.com/vulcanize/ipld-eth-server/pkg/eth"
 	"github.com/vulcanize/ipld-eth-server/pkg/eth/test_helpers"
 )
@@ -190,11 +189,16 @@ var _ = Describe("API", func() {
 	)
 	// Test db setup, rather than using BeforeEach we only need to setup once since the tests do not mutate the database
 	// Note: if you focus one of the tests be sure to focus this and the defered It()
-	It("test init", func() {
+	FIt("test init", func() {
 		var err error
+		_, err = shared1.SetupDB()
 		db, err = shared.SetupDB()
 		Expect(err).ToNot(HaveOccurred())
-		indexAndPublisher := eth2.NewIPLDPublisher(db)
+		indexAndPublisher := indexer.NewStateDiffIndexer(chainConfig, db)
+
+		//db, err = shared.SetupDB()
+		//Expect(err).ToNot(HaveOccurred())
+		//indexAndPublisher := eth2.NewIPLDPublisher(db)
 		backend, err := eth.NewEthBackend(db, &eth.Config{
 			ChainConfig: chainConfig,
 			VmConfig:    vm.Config{},
@@ -202,7 +206,7 @@ var _ = Describe("API", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 		api = eth.NewPublicEthAPI(backend, nil, false)
-		err = indexAndPublisher.Publish(test_helpers.MockConvertedPayload)
+		_, err = indexAndPublisher.PushBlock(test_helpers.MockBlock, test_helpers.MockReceipts, test_helpers.MockBlock.Difficulty())
 		Expect(err).ToNot(HaveOccurred())
 		err = publishCode(db, test_helpers.ContractCodeHash, test_helpers.ContractCode)
 		Expect(err).ToNot(HaveOccurred())
@@ -213,19 +217,19 @@ var _ = Describe("API", func() {
 		}
 		expectedBlock["uncles"] = uncleHashes
 
-		err = indexAndPublisher.Publish(test_helpers.MockConvertedLondonPayload)
+		_, err = indexAndPublisher.PushBlock(test_helpers.MockLondonBlock, test_helpers.MockReceipts, test_helpers.MockLondonBlock.Difficulty())
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	// Single test db tear down at end of all tests
-	defer It("test teardown", func() { eth.TearDownDB(db) })
+	defer FIt("test teardown", func() { eth.TearDownDB(db) })
 	/*
 
 	   Headers and blocks
 
 	*/
 	Describe("eth_getHeaderByNumber", func() {
-		It("Retrieves a header by number", func() {
+		FIt("Retrieves a header by number", func() {
 			header, err := api.GetHeaderByNumber(ctx, number)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(header).To(Equal(expectedHeader))

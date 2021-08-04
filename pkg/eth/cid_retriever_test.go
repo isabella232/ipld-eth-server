@@ -19,8 +19,11 @@ package eth_test
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/statediff/indexer"
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
+	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/shared"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -28,8 +31,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	eth2 "github.com/vulcanize/ipld-eth-indexer/pkg/eth"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/postgres"
-
 	"github.com/vulcanize/ipld-eth-server/pkg/eth"
 	"github.com/vulcanize/ipld-eth-server/pkg/eth/test_helpers"
 )
@@ -212,14 +213,15 @@ var (
 var _ = Describe("Retriever", func() {
 	var (
 		db        *postgres.DB
-		repo      *eth2.IPLDPublisher
+		repo      *indexer.StateDiffIndexer
 		retriever *eth.CIDRetriever
 	)
 	BeforeEach(func() {
 		var err error
 		db, err = shared.SetupDB()
 		Expect(err).ToNot(HaveOccurred())
-		repo = eth2.NewIPLDPublisher(db)
+		//repo = eth2.NewIPLDPublisher(db)
+		repo = indexer.NewStateDiffIndexer(params.TestChainConfig, db)
 		retriever = eth.NewCIDRetriever(db)
 	})
 	AfterEach(func() {
@@ -228,7 +230,7 @@ var _ = Describe("Retriever", func() {
 
 	Describe("Retrieve", func() {
 		BeforeEach(func() {
-			err := repo.Publish(test_helpers.MockConvertedPayload)
+			_, err := repo.PushBlock(test_helpers.MockBlock, test_helpers.MockReceipts, test_helpers.MockBlock.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
 		})
 		It("Retrieves all CIDs for the given blocknumber when provided an open filter", func() {
@@ -400,7 +402,7 @@ var _ = Describe("Retriever", func() {
 			Expect(err).To(HaveOccurred())
 		})
 		It("Gets the number of the first block that has data in the database", func() {
-			err := repo.Publish(test_helpers.MockConvertedPayload)
+			_, err := repo.PushBlock(test_helpers.MockBlock, test_helpers.MockReceipts, test_helpers.MockBlock.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
 			num, err := retriever.RetrieveFirstBlockNumber()
 			Expect(err).ToNot(HaveOccurred())
@@ -410,7 +412,7 @@ var _ = Describe("Retriever", func() {
 		It("Gets the number of the first block that has data in the database", func() {
 			payload := test_helpers.MockConvertedPayload
 			payload.Block = newMockBlock(1010101)
-			err := repo.Publish(payload)
+			_, err := repo.PushBlock(payload.Block, payload.Receipts, payload.Block.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
 			num, err := retriever.RetrieveFirstBlockNumber()
 			Expect(err).ToNot(HaveOccurred())
@@ -422,9 +424,9 @@ var _ = Describe("Retriever", func() {
 			payload1.Block = newMockBlock(1010101)
 			payload2 := payload1
 			payload2.Block = newMockBlock(5)
-			err := repo.Publish(payload1)
+			_, err := repo.PushBlock(payload1.Block, payload1.Receipts, payload1.Block.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
-			err = repo.Publish(payload2)
+			_, err = repo.PushBlock(payload2.Block, payload2.Receipts, payload2.Block.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
 			num, err := retriever.RetrieveFirstBlockNumber()
 			Expect(err).ToNot(HaveOccurred())
@@ -438,7 +440,7 @@ var _ = Describe("Retriever", func() {
 			Expect(err).To(HaveOccurred())
 		})
 		It("Gets the number of the latest block that has data in the database", func() {
-			err := repo.Publish(test_helpers.MockConvertedPayload)
+			_, err := repo.PushBlock(test_helpers.MockBlock, test_helpers.MockReceipts, test_helpers.MockBlock.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
 			num, err := retriever.RetrieveLastBlockNumber()
 			Expect(err).ToNot(HaveOccurred())
@@ -448,7 +450,7 @@ var _ = Describe("Retriever", func() {
 		It("Gets the number of the latest block that has data in the database", func() {
 			payload := test_helpers.MockConvertedPayload
 			payload.Block = newMockBlock(1010101)
-			err := repo.Publish(payload)
+			_, err := repo.PushBlock(payload.Block, payload.Receipts, payload.Block.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
 			num, err := retriever.RetrieveLastBlockNumber()
 			Expect(err).ToNot(HaveOccurred())
@@ -460,9 +462,9 @@ var _ = Describe("Retriever", func() {
 			payload1.Block = newMockBlock(1010101)
 			payload2 := payload1
 			payload2.Block = newMockBlock(5)
-			err := repo.Publish(payload1)
+			_, err := repo.PushBlock(payload1.Block, payload1.Receipts, payload1.Block.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
-			err = repo.Publish(payload2)
+			_, err = repo.PushBlock(payload2.Block, payload2.Receipts, payload2.Block.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
 			num, err := retriever.RetrieveLastBlockNumber()
 			Expect(err).ToNot(HaveOccurred())

@@ -17,12 +17,12 @@
 package eth_test
 
 import (
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/statediff/indexer"
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
+	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/shared"
-
-	eth2 "github.com/vulcanize/ipld-eth-indexer/pkg/eth"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/postgres"
 
 	"github.com/vulcanize/ipld-eth-server/pkg/eth"
 	"github.com/vulcanize/ipld-eth-server/pkg/eth/test_helpers"
@@ -31,7 +31,7 @@ import (
 var _ = Describe("IPLDFetcher", func() {
 	var (
 		db            *postgres.DB
-		pubAndIndexer *eth2.IPLDPublisher
+		pubAndIndexer *indexer.StateDiffIndexer
 		fetcher       *eth.IPLDFetcher
 	)
 	Describe("Fetch", func() {
@@ -39,8 +39,9 @@ var _ = Describe("IPLDFetcher", func() {
 			var err error
 			db, err = shared.SetupDB()
 			Expect(err).ToNot(HaveOccurred())
-			pubAndIndexer = eth2.NewIPLDPublisher(db)
-			err = pubAndIndexer.Publish(test_helpers.MockConvertedPayload)
+			//pubAndIndexer = eth2.NewIPLDPublisher(db)
+			pubAndIndexer = indexer.NewStateDiffIndexer(params.TestChainConfig, db)
+			_, err = pubAndIndexer.PushBlock(test_helpers.MockBlock, test_helpers.MockReceipts, test_helpers.MockBlock.Difficulty())
 			Expect(err).ToNot(HaveOccurred())
 			fetcher = eth.NewIPLDFetcher(db)
 		})

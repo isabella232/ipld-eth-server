@@ -17,10 +17,10 @@
 package eth
 
 import (
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 	. "github.com/onsi/gomega"
 
 	"github.com/vulcanize/ipld-eth-indexer/pkg/eth"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/postgres"
 )
 
 // TearDownDB is used to tear down the watcher dbs after tests

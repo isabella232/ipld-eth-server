@@ -22,12 +22,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/statediff/indexer/models"
+	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/vulcanize/ipld-eth-indexer/pkg/eth"
-	"github.com/vulcanize/ipld-eth-indexer/pkg/postgres"
 
 	"github.com/vulcanize/ipld-eth-server/pkg/shared"
 )
@@ -86,7 +88,7 @@ func (ecr *CIDRetriever) Retrieve(filter SubscriptionSettings, blockNumber int64
 	}()
 
 	// Retrieve cached header CIDs at this block height
-	var headers []eth.HeaderModel
+	var headers []models.HeaderModel
 	headers, err = ecr.RetrieveHeaderCIDs(tx, blockNumber)
 	if err != nil {
 		log.Error("header cid retrieval error")
@@ -166,9 +168,9 @@ func (ecr *CIDRetriever) Retrieve(filter SubscriptionSettings, blockNumber int64
 }
 
 // RetrieveHeaderCIDs retrieves and returns all of the header cids at the provided blockheight
-func (ecr *CIDRetriever) RetrieveHeaderCIDs(tx *sqlx.Tx, blockNumber int64) ([]eth.HeaderModel, error) {
+func (ecr *CIDRetriever) RetrieveHeaderCIDs(tx *sqlx.Tx, blockNumber int64) ([]models.HeaderModel, error) {
 	log.Debug("retrieving header cids for block ", blockNumber)
-	headers := make([]eth.HeaderModel, 0)
+	headers := make([]models.HeaderModel, 0)
 	pgStr := `SELECT * FROM eth.header_cids
 				WHERE block_number = $1`
 	return headers, tx.Select(&headers, pgStr, blockNumber)
@@ -455,13 +457,13 @@ func (ecr *CIDRetriever) RetrieveStorageCIDs(tx *sqlx.Tx, storageFilter StorageF
 }
 
 // RetrieveBlockByHash returns all of the CIDs needed to compose an entire block, for a given block hash
-func (ecr *CIDRetriever) RetrieveBlockByHash(blockHash common.Hash) (eth.HeaderModel, []eth.UncleModel, []eth.TxModel, []eth.ReceiptModel, error) {
+func (ecr *CIDRetriever) RetrieveBlockByHash(blockHash common.Hash) (models.HeaderModel, []eth.UncleModel, []eth.TxModel, []eth.ReceiptModel, error) {
 	log.Debug("retrieving block cids for block hash ", blockHash.String())
 
 	// Begin new db tx
 	tx, err := ecr.db.Beginx()
 	if err != nil {
-		return eth.HeaderModel{}, nil, nil, nil, err
+		return models.HeaderModel{}, nil, nil, nil, err
 	}
 	defer func() {
 		if p := recover(); p != nil {
@@ -474,23 +476,23 @@ func (ecr *CIDRetriever) RetrieveBlockByHash(blockHash common.Hash) (eth.HeaderM
 		}
 	}()
 
-	var headerCID eth.HeaderModel
+	var headerCID models.HeaderModel
 	headerCID, err = ecr.RetrieveHeaderCIDByHash(tx, blockHash)
 	if err != nil {
 		log.Error("header cid retrieval error")
-		return eth.HeaderModel{}, nil, nil, nil, err
+		return models.HeaderModel{}, nil, nil, nil, err
 	}
 	var uncleCIDs []eth.UncleModel
 	uncleCIDs, err = ecr.RetrieveUncleCIDsByHeaderID(tx, headerCID.ID)
 	if err != nil {
 		log.Error("uncle cid retrieval error")
-		return eth.HeaderModel{}, nil, nil, nil, err
+		return models.HeaderModel{}, nil, nil, nil, err
 	}
 	var txCIDs []eth.TxModel
 	txCIDs, err = ecr.RetrieveTxCIDsByHeaderID(tx, headerCID.ID)
 	if err != nil {
 		log.Error("tx cid retrieval error")
-		return eth.HeaderModel{}, nil, nil, nil, err
+		return models.HeaderModel{}, nil, nil, nil, err
 	}
 	txIDs := make([]int64, len(txCIDs))
 	for i, txCID := range txCIDs {
@@ -505,13 +507,13 @@ func (ecr *CIDRetriever) RetrieveBlockByHash(blockHash common.Hash) (eth.HeaderM
 }
 
 // RetrieveBlockByNumber returns all of the CIDs needed to compose an entire block, for a given block number
-func (ecr *CIDRetriever) RetrieveBlockByNumber(blockNumber int64) (eth.HeaderModel, []eth.UncleModel, []eth.TxModel, []eth.ReceiptModel, error) {
+func (ecr *CIDRetriever) RetrieveBlockByNumber(blockNumber int64) (models.HeaderModel, []eth.UncleModel, []eth.TxModel, []eth.ReceiptModel, error) {
 	log.Debug("retrieving block cids for block number ", blockNumber)
 
 	// Begin new db tx
 	tx, err := ecr.db.Beginx()
 	if err != nil {
-		return eth.HeaderModel{}, nil, nil, nil, err
+		return models.HeaderModel{}, nil, nil, nil, err
 	}
 	defer func() {
 		if p := recover(); p != nil {
@@ -524,26 +526,26 @@ func (ecr *CIDRetriever) RetrieveBlockByNumber(blockNumber int64) (eth.HeaderMod
 		}
 	}()
 
-	var headerCID []eth.HeaderModel
+	var headerCID []models.HeaderModel
 	headerCID, err = ecr.RetrieveHeaderCIDs(tx, blockNumber)
 	if err != nil {
 		log.Error("header cid retrieval error")
-		return eth.HeaderModel{}, nil, nil, nil, err
+		return models.HeaderModel{}, nil, nil, nil, err
 	}
 	if len(headerCID) < 1 {
-		return eth.HeaderModel{}, nil, nil, nil, fmt.Errorf("header cid retrieval error, no header CIDs found at block %d", blockNumber)
+		return models.HeaderModel{}, nil, nil, nil, fmt.Errorf("header cid retrieval error, no header CIDs found at block %d", blockNumber)
 	}
 	var uncleCIDs []eth.UncleModel
 	uncleCIDs, err = ecr.RetrieveUncleCIDsByHeaderID(tx, headerCID[0].ID)
 	if err != nil {
 		log.Error("uncle cid retrieval error")
-		return eth.HeaderModel{}, nil, nil, nil, err
+		return models.HeaderModel{}, nil, nil, nil, err
 	}
 	var txCIDs []eth.TxModel
 	txCIDs, err = ecr.RetrieveTxCIDsByHeaderID(tx, headerCID[0].ID)
 	if err != nil {
 		log.Error("tx cid retrieval error")
-		return eth.HeaderModel{}, nil, nil, nil, err
+		return models.HeaderModel{}, nil, nil, nil, err
 	}
 	txIDs := make([]int64, len(txCIDs))
 	for i, txCID := range txCIDs {
@@ -558,11 +560,11 @@ func (ecr *CIDRetriever) RetrieveBlockByNumber(blockNumber int64) (eth.HeaderMod
 }
 
 // RetrieveHeaderCIDByHash returns the header for the given block hash
-func (ecr *CIDRetriever) RetrieveHeaderCIDByHash(tx *sqlx.Tx, blockHash common.Hash) (eth.HeaderModel, error) {
+func (ecr *CIDRetriever) RetrieveHeaderCIDByHash(tx *sqlx.Tx, blockHash common.Hash) (models.HeaderModel, error) {
 	log.Debug("retrieving header cids for block hash ", blockHash.String())
 	pgStr := `SELECT * FROM eth.header_cids
 			WHERE block_hash = $1`
-	var headerCID eth.HeaderModel
+	var headerCID models.HeaderModel
 	return headerCID, tx.Get(&headerCID, pgStr, blockHash.String())
 }
 

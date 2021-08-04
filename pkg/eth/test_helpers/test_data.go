@@ -23,6 +23,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/statediff/indexer/models"
 	sdtypes "github.com/ethereum/go-ethereum/statediff/types"
 	"github.com/ethereum/go-ethereum/trie"
 
@@ -395,7 +396,7 @@ var (
 
 	MockCIDWrapper = &eth2.CIDWrapper{
 		BlockNumber: new(big.Int).Set(BlockNumber),
-		Header: eth.HeaderModel{
+		Header: models.HeaderModel{
 			BlockNumber:     "1",
 			BlockHash:       MockBlock.Hash().String(),
 			ParentHash:      "0x0000000000000000000000000000000000000000000000000000000000000000",
