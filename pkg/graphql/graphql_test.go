@@ -31,6 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/statediff"
 	"github.com/ethereum/go-ethereum/statediff/indexer"
+	"github.com/ethereum/go-ethereum/statediff/indexer/node"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	. "github.com/onsi/ginkgo"
@@ -40,6 +41,18 @@ import (
 	"github.com/vulcanize/ipld-eth-server/pkg/eth/test_helpers"
 	"github.com/vulcanize/ipld-eth-server/pkg/graphql"
 )
+
+// SetupDB is use to setup a db for watcher tests
+func SetupDB() (*postgres.DB, error) {
+	uri := postgres.DbConnectionString(postgres.ConnectionParams{
+		User:     "vdbm",
+		Password: "password",
+		Hostname: "localhost",
+		Name:     "vulcanize_testing",
+		Port:     8077,
+	})
+	return postgres.NewDB(uri, postgres.ConnectionConfig{}, node.Info{})
+}
 
 var _ = Describe("GraphQL", func() {
 	const (
@@ -65,7 +78,7 @@ var _ = Describe("GraphQL", func() {
 
 	It("test init", func() {
 		var err error
-		db, err = shared.SetupDB()
+		db, err = SetupDB()
 		Expect(err).ToNot(HaveOccurred())
 		transformer := indexer.NewStateDiffIndexer(chainConfig, db)
 		backend, err = eth.NewEthBackend(db, &eth.Config{

@@ -31,6 +31,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/statediff/indexer"
+	"github.com/ethereum/go-ethereum/statediff/indexer/node"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
 	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	. "github.com/onsi/ginkgo"
@@ -181,6 +182,18 @@ var (
 	}
 )
 
+// SetupDB is use to setup a db for watcher tests
+func SetupDB() (*postgres.DB, error) {
+	uri := postgres.DbConnectionString(postgres.ConnectionParams{
+		User:     "vdbm",
+		Password: "password",
+		Hostname: "localhost",
+		Name:     "vulcanize_testing",
+		Port:     8077,
+	})
+	return postgres.NewDB(uri, postgres.ConnectionConfig{}, node.Info{})
+}
+
 var _ = Describe("API", func() {
 	var (
 		db          *postgres.DB
@@ -189,10 +202,10 @@ var _ = Describe("API", func() {
 	)
 	// Test db setup, rather than using BeforeEach we only need to setup once since the tests do not mutate the database
 	// Note: if you focus one of the tests be sure to focus this and the defered It()
-	FIt("test init", func() {
+	It("test init", func() {
 		var err error
 		_, err = shared1.SetupDB()
-		db, err = shared.SetupDB()
+		db, err = SetupDB()
 		Expect(err).ToNot(HaveOccurred())
 		indexAndPublisher := indexer.NewStateDiffIndexer(chainConfig, db)
 
@@ -222,14 +235,14 @@ var _ = Describe("API", func() {
 	})
 
 	// Single test db tear down at end of all tests
-	defer FIt("test teardown", func() { eth.TearDownDB(db) })
+	defer It("test teardown", func() { eth.TearDownDB(db) })
 	/*
 
 	   Headers and blocks
 
 	*/
 	Describe("eth_getHeaderByNumber", func() {
-		FIt("Retrieves a header by number", func() {
+		It("Retrieves a header by number", func() {
 			header, err := api.GetHeaderByNumber(ctx, number)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(header).To(Equal(expectedHeader))

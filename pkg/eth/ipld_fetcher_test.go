@@ -20,7 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/statediff/indexer"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -37,7 +36,7 @@ var _ = Describe("IPLDFetcher", func() {
 	Describe("Fetch", func() {
 		BeforeEach(func() {
 			var err error
-			db, err = shared.SetupDB()
+			db, err = SetupDB()
 			Expect(err).ToNot(HaveOccurred())
 			//pubAndIndexer = eth2.NewIPLDPublisher(db)
 			pubAndIndexer = indexer.NewStateDiffIndexer(params.TestChainConfig, db)

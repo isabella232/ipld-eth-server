@@ -33,7 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/statediff"
 	"github.com/ethereum/go-ethereum/statediff/indexer"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -73,7 +72,7 @@ var _ = Describe("eth state reading tests", func() {
 	It("test init", func() {
 		// db and type initializations
 		var err error
-		db, err = shared.SetupDB()
+		db, err = SetupDB()
 		Expect(err).ToNot(HaveOccurred())
 		transformer := indexer.NewStateDiffIndexer(chainConfig, db)
 		//transformer := eth2.NewStateDiffTransformer(chainConfig, db)

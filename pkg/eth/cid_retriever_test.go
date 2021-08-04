@@ -22,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/statediff/indexer"
 	"github.com/ethereum/go-ethereum/statediff/indexer/postgres"
-	"github.com/ethereum/go-ethereum/statediff/indexer/shared"
 	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -218,7 +217,7 @@ var _ = Describe("Retriever", func() {
 	)
 	BeforeEach(func() {
 		var err error
-		db, err = shared.SetupDB()
+		db, err = SetupDB()
 		Expect(err).ToNot(HaveOccurred())
 		//repo = eth2.NewIPLDPublisher(db)
 		repo = indexer.NewStateDiffIndexer(params.TestChainConfig, db)
