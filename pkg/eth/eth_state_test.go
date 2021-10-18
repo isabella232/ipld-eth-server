@@ -211,7 +211,12 @@ var _ = Describe("eth state reading tests", func() {
 			expectedRes := hexutil.Bytes(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"))
 			Expect(res).To(Equal(expectedRes))
 
-			res, err = api.Call(context.Background(), callArgs, rpc.BlockNumberOrHashWithNumber(3), nil)
+			block, err := api.GetBlockByNumber(ctx, 3, false)
+			Expect(err).ToNot(HaveOccurred())
+
+			blockHash := block["hash"].(common.Hash)
+
+			res, err = api.Call(context.Background(), callArgs, rpc.BlockNumberOrHashWithHash(blockHash, false), nil)
 			Expect(err).ToNot(HaveOccurred())
 			expectedRes = hexutil.Bytes(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000003"))
 			Expect(res).To(Equal(expectedRes))
